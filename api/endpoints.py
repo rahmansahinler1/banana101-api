@@ -12,7 +12,7 @@ router = APIRouter()
 
 @router.get("/health")
 async def health_check():
-    logger.log('Working Fine!')
+    logger.log(msg='Working Fine!', level=1)
     return JSONResponse(
         content={"status": "healthy", "service": "Banana API"},
         status_code=200
