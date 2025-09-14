@@ -2,4 +2,4 @@
 .env
 .venv
 database.ini
-__pycache__
+*.pyc

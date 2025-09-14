@@ -17,3 +17,22 @@ async def health_check():
         content={"status": "healthy", "service": "Banana API"},
         status_code=200
     )
+
+@router.post("/initialize_user")
+async def init(request: Request):
+    try:
+        data = await request.json()
+        user_id = data.get("user_id")
+
+        with Database() as db:
+            user_info = db.get_init_data(user_id)
+
+        return JSONResponse(
+            content={
+                "user_info": user_info,
+            },
+            status_code=200,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
