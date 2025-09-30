@@ -1,10 +1,11 @@
 from psycopg2 import extras
 from psycopg2 import DatabaseError
 from pathlib import Path
+from datetime import datetime
 import psycopg2
 import logging
 import uuid
-from datetime import datetime
+import base64
 
 from .utils.config import GenerateConfig
 
@@ -81,12 +82,12 @@ class Database:
             raise e
     
     def get_user_info(self, user_id):
+        query = """
+            SELECT user_id, user_name, user_surname, user_email, user_type, user_created_at
+            FROM user_info 
+            WHERE user_id = %s
+        """
         try:
-            query = """
-                SELECT user_id, user_name, user_surname, user_email, user_type, user_created_at
-                FROM user_info 
-                WHERE user_id = %s
-            """
             self.cursor.execute(query, (user_id,))
             result = self.cursor.fetchone()
             
@@ -104,3 +105,26 @@ class Database:
         except DatabaseError as e:
             logger.error(f"Error fetching user info: {e}")
             raise e
+    
+    def upload_file(self, user_id, category, file_bytes):
+        query = """
+        INSERT INTO pictures (user_id, category, file_bytes)
+        VALUES (%s, %s, %s)
+        """
+        decoded_bytes = base64.b64decode(file_bytes)
+        try:
+            self.cursor.execute(query, (
+                user_id,
+                category,
+                decoded_bytes
+            ))
+            return True
+        except DatabaseError as e:
+            logger.error(f'Error while uploading files: {e}')
+            self.conn.rollback()
+            raise e
+        except Exception as e:
+            logger.error(f'Error while uploading files: {e}')
+            self.conn.rollback()
+            raise e
+        

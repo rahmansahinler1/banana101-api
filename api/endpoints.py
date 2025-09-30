@@ -36,3 +36,23 @@ async def init(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
+@router.post("/upload_file")
+async def upload_file(request: Request):
+    try:
+        data = await request.json()
+        user_id = data.get("user_id")
+        category = data.get("category")
+        file_bytes = data.get("fileBytes")
+
+        with Database() as db:
+            result = db.upload_file(user_id, category, file_bytes)
+
+        return JSONResponse(
+            content={
+                "result": result,
+            },
+            status_code=200,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
