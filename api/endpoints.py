@@ -25,11 +25,13 @@ async def init(request: Request):
         user_id = data.get("user_id")
 
         with Database() as db:
-            user_info = db.get_init_data(user_id)
+            user_info = db.get_user_info(user_id)
+            picture_counts = db.get_picture_counts(user_id)
 
         return JSONResponse(
             content={
                 "user_info": user_info,
+                "picture_counts": picture_counts
             },
             status_code=200,
         )

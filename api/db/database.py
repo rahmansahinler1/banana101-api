@@ -68,22 +68,10 @@ class Database:
         except DatabaseError as e:
             self.conn.rollback()
             raise e
-        
-    def get_init_data(self, user_id):
-        try:
-            user_info = self.get_user_info(user_id)
-            return user_info
-        except DatabaseError as e:
-            self.conn.rollback()
-            raise e
-            
-        except DatabaseError as e:
-            logger.error(f"Error in get_init_data: {e}")
-            raise e
     
     def get_user_info(self, user_id):
         query = """
-            SELECT user_id, user_name, user_surname, user_email, user_type, user_created_at
+            SELECT user_id, user_name, user_surname, user_email, user_type, created_at
             FROM user_info 
             WHERE user_id = %s
         """
@@ -104,6 +92,28 @@ class Database:
             
         except DatabaseError as e:
             logger.error(f"Error fetching user info: {e}")
+            raise e
+    
+    def get_picture_counts(self, user_id):
+        query = """
+            SELECT category, COUNT(*) 
+            FROM pictures 
+            WHERE user_id = %s 
+            GROUP BY category
+        """
+        try:
+            self.cursor.execute(query, (user_id,))
+            results = self.cursor.fetchall()
+            
+            counts = {"yourself": 0, "clothing": 0}
+            for category, count in results:
+                counts[category] = count
+            return counts
+        except DatabaseError as e:
+            logger.error(f"Error fetching picture counts: {e}")
+            raise e
+        except Exception as e:
+            logger.error(f"Error fetching picture counts: {e}")
             raise e
     
     def upload_file(self, user_id, category, file_bytes):
