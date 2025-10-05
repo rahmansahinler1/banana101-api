@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS pictures (
     user_id UUID NOT NULL,
     category VARCHAR(20) NOT NULL,
     file_bytes BYTEA,
+    preview_bytes BYTEA,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES user_info(user_id)
 );

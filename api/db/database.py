@@ -116,25 +116,63 @@ class Database:
             logger.error(f"Error fetching picture counts: {e}")
             raise e
     
-    def upload_file(self, user_id, category, file_bytes):
+    def upload_file(self, user_id, category, file_bytes, preview_bytes):
         query = """
-        INSERT INTO pictures (user_id, category, file_bytes)
-        VALUES (%s, %s, %s)
+        INSERT INTO pictures (user_id, category, file_bytes, preview_bytes)
+        VALUES (%s, %s, %s, %s)
+        RETURNING picture_id
         """
         decoded_bytes = base64.b64decode(file_bytes)
         try:
             self.cursor.execute(query, (
                 user_id,
                 category,
-                decoded_bytes
+                decoded_bytes,
+                preview_bytes
             ))
-            return True
+            picture_id = self.cursor.fetchone()[0]
+            return {
+                "picture_id": str(picture_id),
+                "preview_base64": base64.b64encode(preview_bytes).decode('utf-8')
+            }
         except DatabaseError as e:
             logger.error(f'Error while uploading files: {e}')
             self.conn.rollback()
             raise e
         except Exception as e:
             logger.error(f'Error while uploading files: {e}')
+            self.conn.rollback()
+            raise e
+    
+    def get_preview_images(self, user_id):
+        query = """
+        SELECT picture_id, category, preview_bytes
+        FROM pictures
+        WHERE user_id = %s
+        """
+        try:
+            self.cursor.execute(query, (user_id,))
+            data = self.cursor.fetchall()
+
+            if not data:
+                return {}
+            
+            # Get picture id and preview from fetched data
+            result = {"yourself": [], "clothing": []}
+            for row in data:
+                category = row[1]
+                result[category].append({
+                    "id": str(row[0]),
+                    "base64": base64.b64encode(row[2]).decode('utf-8')
+                })
+            return result
+            
+        except DatabaseError as e:
+            logger.error(f'Error while getting preview files: {e}')
+            self.conn.rollback()
+            raise e
+        except Exception as e:
+            logger.error(f'Error while getting preview files: {e}')
             self.conn.rollback()
             raise e
         
