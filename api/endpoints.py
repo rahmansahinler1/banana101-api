@@ -84,6 +84,19 @@ async def upload_file(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/delete_image")
+async def delete_image(request: Request):
+    try:
+        data = await request.json()
+        user_id = data.get("user_id")
+        picture_id = data.get("picture_id")
 
+        with Database() as db:
+            result = db.delete_picture(user_id, picture_id)
 
-    
+        return JSONResponse(
+            content={"success": result},
+            status_code=200,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

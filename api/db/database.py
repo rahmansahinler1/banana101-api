@@ -120,7 +120,7 @@ class Database:
         query = """
         INSERT INTO pictures (user_id, category, file_bytes, preview_bytes)
         VALUES (%s, %s, %s, %s)
-        RETURNING picture_id
+        RETURNING picture_id, created_at
         """
         decoded_bytes = base64.b64decode(file_bytes)
         try:
@@ -180,4 +180,18 @@ class Database:
             logger.error(f'Error while getting preview files: {e}')
             self.conn.rollback()
             raise e
-        
+
+    def delete_picture(self, user_id, picture_id):
+        query = """
+        DELETE FROM pictures
+        WHERE picture_id = %s AND user_id = %s
+        """
+        try:
+            self.cursor.execute(query, (picture_id, user_id))
+            # Check if any row was deleted
+            if self.cursor.rowcount == 0:
+                return False
+            return True
+        except DatabaseError as e:
+            logger.error(f'Error deleting picture: {e}')
+            raise e
