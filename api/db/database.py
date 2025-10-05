@@ -130,10 +130,13 @@ class Database:
                 decoded_bytes,
                 preview_bytes
             ))
-            picture_id = self.cursor.fetchone()[0]
+            result = self.cursor.fetchone()
+            picture_id = result[0]
+            created_at = result[1]
             return {
                 "picture_id": str(picture_id),
-                "preview_base64": base64.b64encode(preview_bytes).decode('utf-8')
+                "preview_base64": base64.b64encode(preview_bytes).decode('utf-8'),
+                "created_at": created_at.isoformat()
             }
         except DatabaseError as e:
             logger.error(f'Error while uploading files: {e}')
@@ -146,9 +149,10 @@ class Database:
     
     def get_preview_images(self, user_id):
         query = """
-        SELECT picture_id, category, preview_bytes
+        SELECT picture_id, category, preview_bytes, created_at
         FROM pictures
         WHERE user_id = %s
+        ORDER BY created_at DESC
         """
         try:
             self.cursor.execute(query, (user_id,))
@@ -163,7 +167,8 @@ class Database:
                 category = row[1]
                 result[category].append({
                     "id": str(row[0]),
-                    "base64": base64.b64encode(row[2]).decode('utf-8')
+                    "base64": base64.b64encode(row[2]).decode('utf-8'),
+                    "created_at": row[3].isoformat()
                 })
             return result
             

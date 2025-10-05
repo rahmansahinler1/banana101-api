@@ -76,7 +76,8 @@ async def upload_file(request: Request):
         return JSONResponse(
             content={
                 "picture_id": result["picture_id"],
-                "preview_base64": result["preview_base64"]
+                "preview_base64": result["preview_base64"],
+                "created_at": result["created_at"]
             },
             status_code=200,
         )
