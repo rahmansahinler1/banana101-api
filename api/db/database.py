@@ -91,29 +91,12 @@ class Database:
             return None
             
         except DatabaseError as e:
-            logger.error(f"Error fetching user info: {e}")
-            raise e
-    
-    def get_picture_counts(self, user_id):
-        query = """
-            SELECT category, COUNT(*) 
-            FROM pictures 
-            WHERE user_id = %s 
-            GROUP BY category
-        """
-        try:
-            self.cursor.execute(query, (user_id,))
-            results = self.cursor.fetchall()
-            
-            counts = {"yourself": 0, "clothing": 0}
-            for category, count in results:
-                counts[category] = count
-            return counts
-        except DatabaseError as e:
-            logger.error(f"Error fetching picture counts: {e}")
+            logger.error(f"Database error fetching user info: {e}")
+            self.conn.rollback()
             raise e
         except Exception as e:
-            logger.error(f"Error fetching picture counts: {e}")
+            logger.error(f'Exception error fetching user info: {e}')
+            self.conn.rollback()
             raise e
     
     def upload_file(self, user_id, category, file_bytes, preview_bytes):
@@ -139,11 +122,11 @@ class Database:
                 "created_at": created_at.isoformat()
             }
         except DatabaseError as e:
-            logger.error(f'Error while uploading files: {e}')
+            logger.error(f'Database error while uploading files: {e}')
             self.conn.rollback()
             raise e
         except Exception as e:
-            logger.error(f'Error while uploading files: {e}')
+            logger.error(f'Exception error while uploading files: {e}')
             self.conn.rollback()
             raise e
     
@@ -173,11 +156,35 @@ class Database:
             return result
             
         except DatabaseError as e:
-            logger.error(f'Error while getting preview files: {e}')
+            logger.error(f'Database error while getting preview files: {e}')
             self.conn.rollback()
             raise e
         except Exception as e:
-            logger.error(f'Error while getting preview files: {e}')
+            logger.error(f'Exception error while getting preview files: {e}')
+            self.conn.rollback()
+            raise e
+        
+    def get_full_image(self, user_id, picture_id):
+        query = """
+        SELECT file_bytes
+        FROM pictures
+        WHERE user_id = %s AND picture_id = %s
+        """
+        try:
+            self.cursor.execute(query, (user_id, picture_id))
+            data = self.cursor.fetchone()
+
+            if not data:
+                return None
+            
+            return base64.b64encode(data[0]).decode('utf-8')
+            
+        except DatabaseError as e:
+            logger.error(f'Database error while getting full image bytes: {e}')
+            self.conn.rollback()
+            raise e
+        except Exception as e:
+            logger.error(f'Exception error while gettin full image byes: {e}')
             self.conn.rollback()
             raise e
 
@@ -193,5 +200,10 @@ class Database:
                 return False
             return True
         except DatabaseError as e:
-            logger.error(f'Error deleting picture: {e}')
+            logger.error(f"Database error deleting picture: {e}")
+            self.conn.rollback()
+            raise e
+        except Exception as e:
+            logger.error(f'Exception error deleting picture: {e}')
+            self.conn.rollback()
             raise e

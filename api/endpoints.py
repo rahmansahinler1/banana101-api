@@ -28,12 +28,10 @@ async def get_user(request: Request):
 
         with Database() as db:
             user_info = db.get_user_info(user_id)
-            picture_counts = db.get_picture_counts(user_id)
 
         return JSONResponse(
             content={
                 "user_info": user_info,
-                "picture_counts": picture_counts
             },
             status_code=200,
         )
@@ -53,6 +51,26 @@ async def get_previews(request: Request):
         return JSONResponse(
             content={
                 "previews": preview_data,
+            },
+            status_code=200,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/get_full_image")
+async def get_full_image(request: Request):
+    try:
+        # Get payload data
+        data = await request.json()
+        user_id = data.get("user_id")
+        image_id = data.get("image_id")
+
+        with Database() as db:
+            image_bytes = db.get_full_image(user_id, image_id)
+
+        return JSONResponse(
+            content={
+                "image_base64": image_bytes,
             },
             status_code=200,
         )
