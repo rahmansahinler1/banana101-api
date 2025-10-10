@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from .db.database import Database
 from .functions.image_functions import ImageFunctions
 import logging
+import base64
 
 # logger
 logging.basicConfig(level=logging.INFO)
@@ -86,10 +87,11 @@ async def upload_image(request: Request):
         category = data.get("category")
         image_bytes = data.get("imageBytes")
         # Get preview bytes
-        preview_bytes = imgf.create_preview(image_bytes=image_bytes)
+        decoded_bytes = base64.b64decode(image_bytes)
+        preview_bytes = imgf.create_preview(image_bytes=decoded_bytes)
 
         with Database() as db:
-            result = db.upload_image(user_id, category, image_bytes, preview_bytes)
+            result = db.upload_image(user_id, category, decoded_bytes, preview_bytes)
 
         return JSONResponse(
             content={

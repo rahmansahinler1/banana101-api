@@ -105,12 +105,11 @@ class Database:
         VALUES (%s, %s, %s, %s)
         RETURNING image_id, created_at
         """
-        decoded_bytes = base64.b64decode(image_bytes)
         try:
             self.cursor.execute(query, (
                 user_id,
                 category,
-                decoded_bytes,
+                image_bytes,
                 preview_bytes
             ))
             result = self.cursor.fetchone()
@@ -118,7 +117,7 @@ class Database:
             created_at = result[1]
             return {
                 "image_id": str(image_id),
-                "preview_base64": base64.b64encode(preview_bytes).decode('utf-8'),
+                "preview_base64": base64.b64encode(preview_bytes).decode('utf8'),
                 "created_at": created_at.isoformat()
             }
         except DatabaseError as e:
@@ -210,7 +209,7 @@ class Database:
     
     def get_images(self, user_id, yourself_image_id, clothing_image_id):
         query = """
-        SELECT image_id, image_bytes
+        SELECT image_bytes
         FROM images
         WHERE user_id = %s AND image_id = %s
         """
@@ -220,14 +219,14 @@ class Database:
             data = self.cursor.fetchone()
             if not data:
                 return None
-            yourself_image_base64 = base64.b64encode(data[0]).decode('utf-8')
+            yourself_image_base64 = bytes(data[0])
             
             # Get clothing image
             self.cursor.execute(query, (user_id, clothing_image_id))
             data = self.cursor.fetchone()
             if not data:
                 return None
-            clothing_image_base64 = base64.b64encode(data[0]).decode('utf-8')
+            clothing_image_base64 = bytes(data[0])
             
             return yourself_image_base64, clothing_image_base64
             
