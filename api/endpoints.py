@@ -77,23 +77,23 @@ async def get_full_image(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-@router.post("/upload_file")
-async def upload_file(request: Request):
+@router.post("/upload_image")
+async def upload_image(request: Request):
     try:
         # Get payload data
         data = await request.json()
         user_id = data.get("user_id")
         category = data.get("category")
-        file_bytes = data.get("fileBytes")
+        image_bytes = data.get("imageBytes")
         # Get preview bytes
-        preview_bytes = imgf.create_preview(file_bytes=file_bytes)
+        preview_bytes = imgf.create_preview(image_bytes=image_bytes)
 
         with Database() as db:
-            result = db.upload_file(user_id, category, file_bytes, preview_bytes)
+            result = db.upload_image(user_id, category, image_bytes, preview_bytes)
 
         return JSONResponse(
             content={
-                "picture_id": result["picture_id"],
+                "image_id": result["image_id"],
                 "preview_base64": result["preview_base64"],
                 "created_at": result["created_at"]
             },
@@ -107,13 +107,37 @@ async def delete_image(request: Request):
     try:
         data = await request.json()
         user_id = data.get("user_id")
-        picture_id = data.get("picture_id")
+        image_id = data.get("image_id")
 
         with Database() as db:
-            result = db.delete_picture(user_id, picture_id)
+            result = db.delete_image(user_id, image_id)
 
         return JSONResponse(
             content={"success": result},
+            status_code=200,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.post("/generate_image")
+async def generate_image(request: Request):
+    try:
+        # Get payload data
+        data = await request.json()
+        user_id = data.get("user_id")
+        yourself_image_id = data.get("yourself_image_id")
+        clothing_image_id = data.get("clothing_image_id")
+        style = data.get("style")
+        # Get image data
+        with Database() as db:
+            yourself_image_base64, clothing_image_base64 = db.get_images(user_id, yourself_image_id, clothing_image_id)
+        # Generate image
+        generated_image_base64 = imgf.generate_image(yourself_image_base64, clothing_image_base64, style)
+
+        return JSONResponse(
+            content={
+                "image_base64": generated_image_base64,
+            },
             status_code=200,
         )
     except Exception as e:

@@ -99,13 +99,13 @@ class Database:
             self.conn.rollback()
             raise e
     
-    def upload_file(self, user_id, category, file_bytes, preview_bytes):
+    def upload_image(self, user_id, category, image_bytes, preview_bytes):
         query = """
-        INSERT INTO pictures (user_id, category, file_bytes, preview_bytes)
+        INSERT INTO images (user_id, category, image_bytes, preview_bytes)
         VALUES (%s, %s, %s, %s)
-        RETURNING picture_id, created_at
+        RETURNING image_id, created_at
         """
-        decoded_bytes = base64.b64decode(file_bytes)
+        decoded_bytes = base64.b64decode(image_bytes)
         try:
             self.cursor.execute(query, (
                 user_id,
@@ -114,10 +114,10 @@ class Database:
                 preview_bytes
             ))
             result = self.cursor.fetchone()
-            picture_id = result[0]
+            image_id = result[0]
             created_at = result[1]
             return {
-                "picture_id": str(picture_id),
+                "image_id": str(image_id),
                 "preview_base64": base64.b64encode(preview_bytes).decode('utf-8'),
                 "created_at": created_at.isoformat()
             }
@@ -132,8 +132,8 @@ class Database:
     
     def get_preview_images(self, user_id):
         query = """
-        SELECT picture_id, category, preview_bytes, created_at
-        FROM pictures
+        SELECT image_id, category, preview_bytes, created_at
+        FROM images
         WHERE user_id = %s
         ORDER BY created_at DESC
         """
@@ -144,7 +144,7 @@ class Database:
             if not data:
                 return {}
             
-            # Get picture id and preview from fetched data
+            # Get image id and preview from fetched data
             result = {"yourself": [], "clothing": []}
             for row in data:
                 category = row[1]
@@ -164,14 +164,14 @@ class Database:
             self.conn.rollback()
             raise e
         
-    def get_full_image(self, user_id, picture_id):
+    def get_full_image(self, user_id, image_id):
         query = """
-        SELECT file_bytes
-        FROM pictures
-        WHERE user_id = %s AND picture_id = %s
+        SELECT image_bytes
+        FROM images
+        WHERE user_id = %s AND image_id = %s
         """
         try:
-            self.cursor.execute(query, (user_id, picture_id))
+            self.cursor.execute(query, (user_id, image_id))
             data = self.cursor.fetchone()
 
             if not data:
@@ -188,22 +188,54 @@ class Database:
             self.conn.rollback()
             raise e
 
-    def delete_picture(self, user_id, picture_id):
+    def delete_image(self, user_id, image_id):
         query = """
-        DELETE FROM pictures
-        WHERE picture_id = %s AND user_id = %s
+        DELETE FROM images
+        WHERE image_id = %s AND user_id = %s
         """
         try:
-            self.cursor.execute(query, (picture_id, user_id))
+            self.cursor.execute(query, (image_id, user_id))
             # Check if any row was deleted
             if self.cursor.rowcount == 0:
                 return False
             return True
         except DatabaseError as e:
-            logger.error(f"Database error deleting picture: {e}")
+            logger.error(f"Database error deleting image: {e}")
             self.conn.rollback()
             raise e
         except Exception as e:
-            logger.error(f'Exception error deleting picture: {e}')
+            logger.error(f'Exception error deleting image: {e}')
+            self.conn.rollback()
+            raise e
+    
+    def get_images(self, user_id, yourself_image_id, clothing_image_id):
+        query = """
+        SELECT image_id, image_bytes
+        FROM images
+        WHERE user_id = %s AND image_id = %s
+        """
+        try:
+            # Get yourself image
+            self.cursor.execute(query, (user_id, yourself_image_id))
+            data = self.cursor.fetchone()
+            if not data:
+                return None
+            yourself_image_base64 = base64.b64encode(data[0]).decode('utf-8')
+            
+            # Get clothing image
+            self.cursor.execute(query, (user_id, clothing_image_id))
+            data = self.cursor.fetchone()
+            if not data:
+                return None
+            clothing_image_base64 = base64.b64encode(data[0]).decode('utf-8')
+            
+            return yourself_image_base64, clothing_image_base64
+            
+        except DatabaseError as e:
+            logger.error(f'Database error while getting preview files: {e}')
+            self.conn.rollback()
+            raise e
+        except Exception as e:
+            logger.error(f'Exception error while getting preview files: {e}')
             self.conn.rollback()
             raise e

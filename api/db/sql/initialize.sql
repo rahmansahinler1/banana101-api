@@ -7,11 +7,11 @@ CREATE TABLE IF NOT EXISTS user_info (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS pictures (
-    picture_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+CREATE TABLE IF NOT EXISTS images (
+    image_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
     category VARCHAR(20) NOT NULL,
-    file_bytes BYTEA,
+    image_bytes BYTEA,
     preview_bytes BYTEA,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES user_info(user_id)
