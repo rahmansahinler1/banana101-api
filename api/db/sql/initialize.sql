@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS generations (
     clothing_image_id VARCHAR(50) NOT NULL,
     image_bytes BYTEA,
     preview_bytes BYTEA,
+    faved BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(user_id)
 );

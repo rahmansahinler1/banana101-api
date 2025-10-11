@@ -12,14 +12,14 @@ class ImageFunctions:
             api_key=os.getenv("GEMINI_API_KEY"),
         )
         self.model = "gemini-2.5-flash-image"
-        self.max_preview_size = (300, 300)
+        self.max_preview_size = (400, 500)
 
     def create_preview(self, image_bytes):
         """Create a smaller preview version of the uploaded image."""
         image = Image.open(io.BytesIO(image_bytes))
         image.thumbnail(self.max_preview_size, Image.LANCZOS)
         output = io.BytesIO()
-        image.save(output, format='JPEG', quality=85, optimize=True)
+        image.save(output, format='JPEG', quality=90, optimize=True)
         return output.getvalue()
 
     def generate_image(self, yourself_image_base64, clothing_image_base64):

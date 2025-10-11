@@ -210,6 +210,43 @@ class Database:
             logger.error(f'Exception error while getting preview files: {e}')
             self.conn.rollback()
             raise e
+    
+    def get_preview_generations(
+            self,
+            user_id
+        ):
+        query = """
+        SELECT image_id, preview_bytes, faved, created_at
+        FROM generations
+        WHERE user_id = %s
+        ORDER BY created_at DESC
+        """
+        try:
+            self.cursor.execute(query, (user_id,))
+            data = self.cursor.fetchall()
+
+            if not data:
+                return []
+            
+            # Get image id and preview from fetched data
+            result = []
+            for row in data:
+                result.append({
+                    "id": str(row[0]),
+                    "base64": base64.b64encode(row[1]).decode('utf-8'),
+                    "faved": row[2],
+                    "created_at": row[3].isoformat()
+                })
+            return result
+            
+        except DatabaseError as e:
+            logger.error(f'Database error while getting preview files: {e}')
+            self.conn.rollback()
+            raise e
+        except Exception as e:
+            logger.error(f'Exception error while getting preview files: {e}')
+            self.conn.rollback()
+            raise e
         
     def get_full_image(
             self,
@@ -246,6 +283,30 @@ class Database:
         ):
         query = """
         DELETE FROM images
+        WHERE image_id = %s AND user_id = %s
+        """
+        try:
+            self.cursor.execute(query, (image_id, user_id))
+            # Check if any row was deleted
+            if self.cursor.rowcount == 0:
+                return False
+            return True
+        except DatabaseError as e:
+            logger.error(f"Database error deleting image: {e}")
+            self.conn.rollback()
+            raise e
+        except Exception as e:
+            logger.error(f'Exception error deleting image: {e}')
+            self.conn.rollback()
+            raise e
+    
+    def delete_generated_image(
+            self,
+            user_id,
+            image_id
+        ):
+        query = """
+        DELETE FROM generations
         WHERE image_id = %s AND user_id = %s
         """
         try:
