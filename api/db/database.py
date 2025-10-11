@@ -324,6 +324,35 @@ class Database:
             self.conn.rollback()
             raise e
     
+    def update_fav(
+            self,
+            user_id,
+            image_id
+        ):
+        query = """
+        UPDATE generations
+        SET faved = NOT faved
+        WHERE image_id = %s AND user_id = %s
+        RETURNING faved
+        """
+        try:
+            self.cursor.execute(query, (image_id, user_id))
+            result = self.cursor.fetchone()
+
+            # Check if any row was updated
+            if not result:
+                return False
+
+            return True
+        except DatabaseError as e:
+            logger.error(f"Database error updating fav: {e}")
+            self.conn.rollback()
+            raise e
+        except Exception as e:
+            logger.error(f'Exception error updating fav: {e}')
+            self.conn.rollback()
+            raise e
+    
     def get_image(
             self,
             user_id,
