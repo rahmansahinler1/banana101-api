@@ -83,6 +83,30 @@ async def get_full_image(request: Request):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/get_full_generated_image")
+async def get_full_generated_image(request: Request):
+    try:
+        # Get payload data
+        data = await request.json()
+        user_id = data.get("user_id")
+        image_id = data.get("image_id")
+
+        with Database() as db:
+            image_bytes = db.get_full_generated_image(
+                user_id,
+                image_id
+                )
+            image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+
+        return JSONResponse(
+            content={
+                "image_base64": image_base64,
+            },
+            status_code=200,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     
 @router.post("/upload_image")
 async def upload_image(request: Request):

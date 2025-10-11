@@ -264,15 +264,43 @@ class Database:
 
             if not data:
                 return None
-            
+
             return data[0]
-            
+
         except DatabaseError as e:
             logger.error(f'Database error while getting full image bytes: {e}')
             self.conn.rollback()
             raise e
         except Exception as e:
             logger.error(f'Exception error while gettin full image byes: {e}')
+            self.conn.rollback()
+            raise e
+
+    def get_full_generated_image(
+            self,
+            user_id,
+            image_id
+        ):
+        query = """
+        SELECT image_bytes
+        FROM generations
+        WHERE user_id = %s AND image_id = %s
+        """
+        try:
+            self.cursor.execute(query, (user_id, image_id))
+            data = self.cursor.fetchone()
+
+            if not data:
+                return None
+
+            return data[0]
+
+        except DatabaseError as e:
+            logger.error(f'Database error while getting full generated image bytes: {e}')
+            self.conn.rollback()
+            raise e
+        except Exception as e:
+            logger.error(f'Exception error while getting full generated image bytes: {e}')
             self.conn.rollback()
             raise e
 
