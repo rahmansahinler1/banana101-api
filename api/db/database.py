@@ -67,7 +67,10 @@ class Database:
             self.conn.rollback()
             raise e
     
-    def get_user_info(self, user_id):
+    def get_user_info(
+            self,
+            user_id
+        ):
         query = """
             SELECT user_id, user_name, user_surname, user_email, user_type, created_at
             FROM users
@@ -97,7 +100,13 @@ class Database:
             self.conn.rollback()
             raise e
     
-    def insert_image(self, user_id, category, image_bytes, preview_bytes):
+    def insert_image(
+            self,
+            user_id,
+            category,
+            image_bytes,
+            preview_bytes
+        ):
         query = """
         INSERT INTO images (user_id, category, image_bytes, preview_bytes)
         VALUES (%s, %s, %s, %s)
@@ -165,7 +174,10 @@ class Database:
             self.conn.rollback()
             raise e
     
-    def get_preview_images(self, user_id):
+    def get_preview_images(
+            self,
+            user_id
+        ):
         query = """
         SELECT image_id, category, preview_bytes, created_at
         FROM images
@@ -199,7 +211,11 @@ class Database:
             self.conn.rollback()
             raise e
         
-    def get_full_image(self, user_id, image_id):
+    def get_full_image(
+            self,
+            user_id,
+            image_id
+        ):
         query = """
         SELECT image_bytes
         FROM images
@@ -223,7 +239,11 @@ class Database:
             self.conn.rollback()
             raise e
 
-    def delete_image(self, user_id, image_id):
+    def delete_image(
+            self,
+            user_id,
+            image_id
+        ):
         query = """
         DELETE FROM images
         WHERE image_id = %s AND user_id = %s
@@ -243,7 +263,11 @@ class Database:
             self.conn.rollback()
             raise e
     
-    def get_image(self, user_id, image_id):
+    def get_image(
+            self,
+            user_id,
+            image_id
+        ):
         query = """
         SELECT image_bytes
         FROM images
