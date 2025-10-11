@@ -129,12 +129,12 @@ async def generate_image(request: Request):
         user_id = data.get("user_id")
         yourself_image_id = data.get("yourself_image_id")
         clothing_image_id = data.get("clothing_image_id")
-        style = data.get("style")
         # Get image data
         with Database() as db:
             yourself_image_base64, clothing_image_base64 = db.get_images(user_id, yourself_image_id, clothing_image_id)
+        
         # Generate image
-        generated_image_base64 = imgf.generate_image(yourself_image_base64, clothing_image_base64, style)
+        generated_image_base64 = imgf.generate_image(yourself_image_base64, clothing_image_base64)
 
         return JSONResponse(
             content={

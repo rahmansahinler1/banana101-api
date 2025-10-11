@@ -23,7 +23,7 @@ class ImageFunctions:
         image.save(output, format='JPEG', quality=85, optimize=True)
         return output.getvalue()
 
-    def generate_image(self, yourself_image_base64, clothing_image_base64, style="old money"):
+    def generate_image(self, yourself_image_base64, clothing_image_base64):
         main_prompt = f"""
         Combine two images seamlessly. In the first image, there is a person.
         In the second image, there is a clothing item which may or may not be worn by a model.
@@ -31,9 +31,7 @@ class ImageFunctions:
         Place the clothing naturally on the person in the first image, preserving body proportions, posture, and all human features exactly as in the original.
         Never modify or stylize the person’s face or body.
         Only adjust lighting and shadows to make the combination realistic.
-        If a background style parameter is provided, harmonize the final background with that style in a subtle, photorealistic way.
         The final result must look like the person in the first image is realistically wearing the clothing from the second image.
-        Background style: {style}.
         """
 
         # Create parts list using Blob format (matching sample code)
