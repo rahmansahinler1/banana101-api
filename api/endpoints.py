@@ -67,11 +67,15 @@ async def get_full_image(request: Request):
         image_id = data.get("image_id")
 
         with Database() as db:
-            image_bytes = db.get_full_image(user_id, image_id)
+            image_bytes = db.get_full_image(
+                user_id,
+                image_id
+                )
+            image_base64 = base64.b64encode(image_bytes).decode('utf-8')
 
         return JSONResponse(
             content={
-                "image_base64": image_bytes,
+                "image_base64": image_base64,
             },
             status_code=200,
         )
@@ -91,7 +95,12 @@ async def upload_image(request: Request):
         preview_bytes = imgf.create_preview(image_bytes=decoded_bytes)
 
         with Database() as db:
-            result = db.upload_image(user_id, category, decoded_bytes, preview_bytes)
+            result = db.insert_image(
+                user_id,
+                category,
+                decoded_bytes,
+                preview_bytes
+                )
 
         return JSONResponse(
             content={
@@ -112,7 +121,10 @@ async def delete_image(request: Request):
         image_id = data.get("image_id")
 
         with Database() as db:
-            result = db.delete_image(user_id, image_id)
+            result = db.delete_image(
+                user_id,
+                image_id
+                )
 
         return JSONResponse(
             content={"success": result},
@@ -129,16 +141,42 @@ async def generate_image(request: Request):
         user_id = data.get("user_id")
         yourself_image_id = data.get("yourself_image_id")
         clothing_image_id = data.get("clothing_image_id")
+
         # Get image data
         with Database() as db:
-            yourself_image_base64, clothing_image_base64 = db.get_images(user_id, yourself_image_id, clothing_image_id)
+            yourself_image_bytes = db.get_image(
+                user_id,
+                yourself_image_id
+                )
+            clothing_image_bytes = db.get_image(
+                user_id,
+                clothing_image_id
+                )
         
         # Generate image
-        generated_image_base64 = imgf.generate_image(yourself_image_base64, clothing_image_base64)
+        generated_image_bytes = imgf.generate_image(
+            yourself_image_bytes,
+            clothing_image_bytes
+            )
+        image_base64 = base64.b64encode(generated_image_bytes).decode('utf-8')
+
+        # Save generation to the db
+        generated_preview_bytes = imgf.create_preview(generated_image_bytes)
+        with Database() as db:
+            result = db.insert_generated_image(
+                user_id,
+                yourself_image_id,
+                clothing_image_id,
+                generated_image_bytes,
+                generated_preview_bytes
+                )
 
         return JSONResponse(
             content={
-                "image_base64": generated_image_base64,
+                "image_id": result["image_id"],
+                "image_base64": image_base64,
+                "preview_base64": result["preview_base64"],
+                "created_at": result["created_at"]
             },
             status_code=200,
         )

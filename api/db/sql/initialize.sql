@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS user_info (
+CREATE TABLE IF NOT EXISTS users (
     user_id UUID PRIMARY KEY,
     user_name VARCHAR(50) NOT NULL,
     user_surname VARCHAR(50) NOT NULL,
@@ -14,5 +14,16 @@ CREATE TABLE IF NOT EXISTS images (
     image_bytes BYTEA,
     preview_bytes BYTEA,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES user_info(user_id)
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+
+CREATE TABLE IF NOT EXISTS generations (
+    image_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    yourself_image_id VARCHAR(50) NOT NULL,
+    clothing_image_id VARCHAR(50) NOT NULL,
+    image_bytes BYTEA,
+    preview_bytes BYTEA,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
 );

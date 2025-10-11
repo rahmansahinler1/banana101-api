@@ -1,10 +1,8 @@
 from psycopg2 import extras
 from psycopg2 import DatabaseError
 from pathlib import Path
-from datetime import datetime
 import psycopg2
 import logging
-import uuid
 import base64
 
 from .utils.config import GenerateConfig
@@ -72,7 +70,7 @@ class Database:
     def get_user_info(self, user_id):
         query = """
             SELECT user_id, user_name, user_surname, user_email, user_type, created_at
-            FROM user_info 
+            FROM users
             WHERE user_id = %s
         """
         try:
@@ -99,7 +97,7 @@ class Database:
             self.conn.rollback()
             raise e
     
-    def upload_image(self, user_id, category, image_bytes, preview_bytes):
+    def insert_image(self, user_id, category, image_bytes, preview_bytes):
         query = """
         INSERT INTO images (user_id, category, image_bytes, preview_bytes)
         VALUES (%s, %s, %s, %s)
@@ -118,6 +116,44 @@ class Database:
             return {
                 "image_id": str(image_id),
                 "preview_base64": base64.b64encode(preview_bytes).decode('utf8'),
+                "created_at": created_at.isoformat()
+            }
+        except DatabaseError as e:
+            logger.error(f'Database error while uploading files: {e}')
+            self.conn.rollback()
+            raise e
+        except Exception as e:
+            logger.error(f'Exception error while uploading files: {e}')
+            self.conn.rollback()
+            raise e
+    
+    def insert_generated_image(
+            self,
+            user_id,
+            yourself_image_id,
+            clothing_image_id,
+            generated_image_bytes,
+            generated_preview_bytes
+        ):
+        query = """
+        INSERT INTO generations (user_id, yourself_image_id, clothing_image_id, image_bytes, preview_bytes)
+        VALUES (%s, %s, %s, %s, %s)
+        RETURNING image_id, created_at
+        """
+        try:
+            self.cursor.execute(query, (
+                user_id,
+                yourself_image_id,
+                clothing_image_id,
+                generated_image_bytes,
+                generated_preview_bytes
+            ))
+            result = self.cursor.fetchone()
+            image_id = result[0]
+            created_at = result[1]
+            return {
+                "image_id": str(image_id),
+                "preview_base64": base64.b64encode(generated_preview_bytes).decode('utf8'),
                 "created_at": created_at.isoformat()
             }
         except DatabaseError as e:
@@ -176,7 +212,7 @@ class Database:
             if not data:
                 return None
             
-            return base64.b64encode(data[0]).decode('utf-8')
+            return data[0]
             
         except DatabaseError as e:
             logger.error(f'Database error while getting full image bytes: {e}')
@@ -207,7 +243,7 @@ class Database:
             self.conn.rollback()
             raise e
     
-    def get_images(self, user_id, yourself_image_id, clothing_image_id):
+    def get_image(self, user_id, image_id):
         query = """
         SELECT image_bytes
         FROM images
@@ -215,20 +251,13 @@ class Database:
         """
         try:
             # Get yourself image
-            self.cursor.execute(query, (user_id, yourself_image_id))
+            self.cursor.execute(query, (user_id, image_id))
             data = self.cursor.fetchone()
             if not data:
                 return None
-            yourself_image_base64 = bytes(data[0])
+            image_bytes = bytes(data[0])
             
-            # Get clothing image
-            self.cursor.execute(query, (user_id, clothing_image_id))
-            data = self.cursor.fetchone()
-            if not data:
-                return None
-            clothing_image_base64 = bytes(data[0])
-            
-            return yourself_image_base64, clothing_image_base64
+            return image_bytes
             
         except DatabaseError as e:
             logger.error(f'Database error while getting preview files: {e}')
