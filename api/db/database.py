@@ -179,7 +179,7 @@ class Database:
             user_id
         ):
         query = """
-        SELECT image_id, category, preview_bytes, created_at
+        SELECT image_id, category, preview_bytes, faved, created_at
         FROM images
         WHERE user_id = %s
         ORDER BY created_at DESC
@@ -190,7 +190,7 @@ class Database:
 
             if not data:
                 return {}
-            
+
             # Get image id and preview from fetched data
             result = {"yourself": [], "clothing": []}
             for row in data:
@@ -198,10 +198,11 @@ class Database:
                 result[category].append({
                     "id": str(row[0]),
                     "base64": base64.b64encode(row[2]).decode('utf-8'),
-                    "created_at": row[3].isoformat()
+                    "faved": row[3],
+                    "created_at": row[4].isoformat()
                 })
             return result
-            
+
         except DatabaseError as e:
             logger.error(f'Database error while getting preview files: {e}')
             self.conn.rollback()
@@ -378,6 +379,35 @@ class Database:
             raise e
         except Exception as e:
             logger.error(f'Exception error updating fav: {e}')
+            self.conn.rollback()
+            raise e
+
+    def update_image_fav(
+            self,
+            user_id,
+            image_id
+        ):
+        query = """
+        UPDATE images
+        SET faved = NOT faved
+        WHERE image_id = %s AND user_id = %s
+        RETURNING faved
+        """
+        try:
+            self.cursor.execute(query, (image_id, user_id))
+            result = self.cursor.fetchone()
+
+            # Check if any row was updated
+            if not result:
+                return False
+
+            return True
+        except DatabaseError as e:
+            logger.error(f"Database error updating image fav: {e}")
+            self.conn.rollback()
+            raise e
+        except Exception as e:
+            logger.error(f'Exception error updating image fav: {e}')
             self.conn.rollback()
             raise e
     

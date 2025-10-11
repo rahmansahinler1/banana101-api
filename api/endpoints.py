@@ -248,3 +248,23 @@ async def update_fav(request: Request):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/update_image_fav")
+async def update_image_fav(request: Request):
+    try:
+        data = await request.json()
+        user_id = data.get("user_id")
+        image_id = data.get("image_id")
+
+        with Database() as db:
+            result = db.update_image_fav(
+                user_id,
+                image_id
+                )
+
+        return JSONResponse(
+            content={"success": result},
+            status_code=200,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
