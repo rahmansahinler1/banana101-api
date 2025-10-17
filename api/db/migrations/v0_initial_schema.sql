@@ -1,3 +1,4 @@
+-- Users table
 CREATE TABLE IF NOT EXISTS users (
     user_id UUID PRIMARY KEY,
     user_name VARCHAR(50) NOT NULL,
@@ -7,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Images table
 CREATE TABLE IF NOT EXISTS images (
     image_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
@@ -18,6 +20,7 @@ CREATE TABLE IF NOT EXISTS images (
     FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
 
+-- Generations table
 CREATE TABLE IF NOT EXISTS generations (
     image_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,

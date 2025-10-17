@@ -1,11 +1,9 @@
-from psycopg2 import extras
-from psycopg2 import DatabaseError
-from pathlib import Path
 import psycopg2
 import logging
 import base64
+from psycopg2 import DatabaseError
+from configparser import ConfigParser
 
-from .utils.config import GenerateConfig
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -13,10 +11,10 @@ logger = logging.getLogger(__name__)
 class Database:
     _instance = None
 
-    def __new__(cls):
+    def __new__(self, cls):
         if cls._instance is None:
             cls._instance = super(Database, cls).__new__(cls)
-            cls._instance.db_config = GenerateConfig.config()
+            cls._instance.db_config = self._config()
         return cls._instance
 
     def __enter__(self):
@@ -33,39 +31,19 @@ class Database:
             else:
                 self.conn.rollback()
             self.conn.close()
-
-    def initialize_database(self):
-        sql_path = Path(__file__).resolve().parent / "sql" / "initialize.sql"
-        with sql_path.open("r") as file:
-            query = file.read()
-        try:
-            self.cursor.execute(query)
-            self.conn.commit()
-        except DatabaseError as e:
-            self.conn.rollback()
-            raise e
     
-    def insert_test_users(self):
-        sql_path = Path(__file__).resolve().parent / "sql" / "insert_test_data.sql"
-        with sql_path.open("r") as file:
-            query = file.read()
-        try:
-            self.cursor.execute(query)
-            self.conn.commit()
-        except DatabaseError as e:
-            self.conn.rollback()
-            raise e
+    def _config(filename="api/db/database.ini", section="postgresql"):
+        parser = ConfigParser()
+        parser.read(filename)
+        db_config = {}
+        if parser.has_section(section):
+            params = parser.items(section)
+            for param in params:
+                db_config[param[0]] = param[1]
+        else:
+            raise Exception(f"Section {section} is not found in {filename} file.")
+        return db_config
 
-    def reset_database(self):
-        sql_path = Path(__file__).resolve().parent / "sql" / "reset.sql"
-        with sql_path.open("r") as file:
-            query = file.read()
-        try:
-            self.cursor.execute(query)
-            self.conn.commit()
-        except DatabaseError as e:
-            self.conn.rollback()
-            raise e
     
     def get_user_info(
             self,
