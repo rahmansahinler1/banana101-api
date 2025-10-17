@@ -3,3 +3,4 @@
 .venv
 database.ini
 *.pyc
+__pycache__/
