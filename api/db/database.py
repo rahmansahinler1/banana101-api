@@ -4,17 +4,16 @@ import base64
 from psycopg2 import DatabaseError
 from configparser import ConfigParser
 
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class Database:
     _instance = None
 
-    def __new__(self, cls):
+    def __new__(cls):
         if cls._instance is None:
             cls._instance = super(Database, cls).__new__(cls)
-            cls._instance.db_config = self._config()
+            cls._instance.db_config = cls._config()
         return cls._instance
 
     def __enter__(self):
@@ -23,27 +22,25 @@ class Database:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.cursor:
+        if hasattr(self, "cursor") and self.cursor:
             self.cursor.close()
-        if self.conn:
+        if hasattr(self, "conn") and self.conn:
             if exc_type is None:
                 self.conn.commit()
             else:
                 self.conn.rollback()
             self.conn.close()
-    
+
     def _config(filename="api/db/database.ini", section="postgresql"):
         parser = ConfigParser()
         parser.read(filename)
         db_config = {}
         if parser.has_section(section):
-            params = parser.items(section)
-            for param in params:
-                db_config[param[0]] = param[1]
+            for key, value in parser.items(section):
+                db_config[key] = value
         else:
-            raise Exception(f"Section {section} is not found in {filename} file.")
+            raise Exception(f"Section {section} not found in {filename}")
         return db_config
-
     
     def get_user_info(
             self,
