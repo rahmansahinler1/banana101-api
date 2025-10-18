@@ -205,7 +205,7 @@ async def generate_image(request: Request):
                 user_id,
                 clothing_image_id
                 )
-        
+
         # Generate image
         generated_image_bytes = imgf.generate_image(
             yourself_image_bytes,
@@ -229,11 +229,17 @@ async def generate_image(request: Request):
                 "image_id": result["image_id"],
                 "image_base64": image_base64,
                 "preview_base64": result["preview_base64"],
-                "created_at": result["created_at"]
+                "created_at": result["created_at"],
+                "generations_left": result["generations_left"]
             },
             status_code=200,
         )
     except Exception as e:
+        if "Insufficient generation credits" in str(e):
+            raise HTTPException(
+                status_code=403,
+                detail="Insufficient generation credits. Please upgrade to premium for more generations."
+            )
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/update_fav")

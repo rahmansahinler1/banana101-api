@@ -173,13 +173,33 @@ class Database:
             generated_image_bytes,
             generated_preview_bytes
         ):
-        query = """
+        # Check if user has generation credits
+        credit_check_query = """
+        SELECT generations_left FROM users WHERE user_id = %s
+        """
+
+        insert_query = """
         INSERT INTO generations (user_id, yourself_image_id, clothing_image_id, image_bytes, preview_bytes)
         VALUES (%s, %s, %s, %s, %s)
         RETURNING image_id, created_at
         """
+
+        decrement_query = """
+        UPDATE users SET generations_left = generations_left - 1
+        WHERE user_id = %s
+        RETURNING generations_left
+        """
+
         try:
-            self.cursor.execute(query, (
+            # Step 1: Check credits
+            self.cursor.execute(credit_check_query, (user_id,))
+            credit_result = self.cursor.fetchone()
+
+            if not credit_result or credit_result[0] <= 0:
+                raise Exception("Insufficient generation credits")
+
+            # Step 2: Insert generation
+            self.cursor.execute(insert_query, (
                 user_id,
                 yourself_image_id,
                 clothing_image_id,
@@ -189,10 +209,16 @@ class Database:
             result = self.cursor.fetchone()
             image_id = result[0]
             created_at = result[1]
+
+            # Step 3: Decrement credit
+            self.cursor.execute(decrement_query, (user_id,))
+            new_credits = self.cursor.fetchone()[0]
+
             return {
                 "image_id": str(image_id),
                 "preview_base64": base64.b64encode(generated_preview_bytes).decode('utf8'),
-                "created_at": created_at.isoformat()
+                "created_at": created_at.isoformat(),
+                "generations_left": new_credits
             }
         except DatabaseError as e:
             logger.error(f'Database error while uploading files: {e}')
