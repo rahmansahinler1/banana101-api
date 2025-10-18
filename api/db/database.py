@@ -1,6 +1,7 @@
 import psycopg2
 import logging
 import base64
+import calendar
 from psycopg2 import DatabaseError
 from configparser import ConfigParser
 
@@ -47,26 +48,52 @@ class Database:
             user_id
         ):
         query = """
-            SELECT user_name, user_surname, gender, user_email, user_type, uploads_left, generations_left
+            SELECT user_name, user_surname, user_email, gender, picture_url, user_type, uploads_left, generations_left, last_payment_at
             FROM users
             WHERE user_id = %s
         """
         try:
             self.cursor.execute(query, (user_id,))
             result = self.cursor.fetchone()
-            
+
             if result:
+                last_payment = result[8]
+                next_renewal = None
+
+                # Calculate next renewal date if premium and has last_payment_at
+                if last_payment and result[5] == 'premium':
+                    # Add exactly 1 month (handles month-end edge cases properly)
+                    year = last_payment.year
+                    month = last_payment.month
+                    day = last_payment.day
+
+                    # Increment month
+                    if month == 12:
+                        month = 1
+                        year += 1
+                    else:
+                        month += 1
+
+                    # Handle day overflow (e.g., Jan 31 -> Feb 28/29)
+                    max_day = calendar.monthrange(year, month)[1]
+                    day = min(day, max_day)
+
+                    next_renewal_date = last_payment.replace(year=year, month=month, day=day)
+                    next_renewal = next_renewal_date.strftime("%b %d, %Y")
+
                 return {
                     "name": result[0],
                     "surname": result[1],
-                    "gender": result[2],
-                    "email": result[3],
-                    "type": result[4],
-                    "uploads_left": result[5],
-                    "generations_left": result[6],
+                    "email": result[2],
+                    "gender": result[3],
+                    "picture_url": result[4],
+                    "type": result[5],
+                    "uploads_left": result[6],
+                    "generations_left": result[7],
+                    "next_renewal_date": next_renewal
                 }
             return None
-            
+
         except DatabaseError as e:
             logger.error(f"Database error fetching user info: {e}")
             self.conn.rollback()
