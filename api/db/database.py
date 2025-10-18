@@ -47,7 +47,7 @@ class Database:
             user_id
         ):
         query = """
-            SELECT user_id, user_name, user_surname, user_email, user_type, created_at
+            SELECT user_name, user_surname, gender, user_email, user_type, uploads_left, generations_left
             FROM users
             WHERE user_id = %s
         """
@@ -57,12 +57,13 @@ class Database:
             
             if result:
                 return {
-                    "user_id": str(result[0]),
-                    "user_name": result[1],
-                    "user_surname": result[2], 
-                    "user_email": result[3],
-                    "user_type": result[4],
-                    "user_created_at": result[5].isoformat() if result[5] else None
+                    "name": result[0],
+                    "surname": result[1],
+                    "gender": result[2],
+                    "email": result[3],
+                    "type": result[4],
+                    "uploads_left": result[5],
+                    "generations_left": result[6],
                 }
             return None
             
