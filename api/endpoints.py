@@ -132,11 +132,18 @@ async def upload_image(request: Request):
             content={
                 "image_id": result["image_id"],
                 "preview_base64": result["preview_base64"],
-                "created_at": result["created_at"]
+                "created_at": result["created_at"],
+                "uploads_left": result["uploads_left"]
             },
             status_code=200,
         )
     except Exception as e:
+        # Check if it's a credit error
+        if "Insufficient upload credits" in str(e):
+            raise HTTPException(
+                status_code=403,
+                detail="Insufficient upload credits. Please upgrade to premium for more uploads."
+            )
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/delete_image")
