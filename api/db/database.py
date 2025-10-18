@@ -483,14 +483,56 @@ class Database:
             if not data:
                 return None
             image_bytes = bytes(data[0])
-            
+
             return image_bytes
-            
+
         except DatabaseError as e:
             logger.error(f'Database error while getting preview files: {e}')
             self.conn.rollback()
             raise e
         except Exception as e:
             logger.error(f'Exception error while getting preview files: {e}')
+            self.conn.rollback()
+            raise e
+
+    def insert_feedback(
+            self,
+            user_id,
+            message
+        ):
+        # Check if user has already submitted 5 or more feedbacks
+        count_query = """
+        SELECT COUNT(*) FROM feedbacks WHERE user_id = %s
+        """
+
+        insert_query = """
+        INSERT INTO feedbacks (user_id, message)
+        VALUES (%s, %s)
+        RETURNING feedback_id, created_at
+        """
+
+        try:
+            # Check feedback count
+            self.cursor.execute(count_query, (user_id,))
+            count_result = self.cursor.fetchone()
+
+            if count_result and count_result[0] >= 5:
+                raise Exception("Feedback limit reached!")
+
+            # Insert feedback
+            self.cursor.execute(insert_query, (user_id, message))
+            result = self.cursor.fetchone()
+            feedback_id = result[0]
+            created_at = result[1]
+            return {
+                "feedback_id": str(feedback_id),
+                "created_at": created_at.isoformat()
+            }
+        except DatabaseError as e:
+            logger.error(f'Database error while inserting feedback: {e}')
+            self.conn.rollback()
+            raise e
+        except Exception as e:
+            logger.error(f'Exception error while inserting feedback: {e}')
             self.conn.rollback()
             raise e

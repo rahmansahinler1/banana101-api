@@ -281,3 +281,33 @@ async def update_image_fav(request: Request):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/submit_feedback")
+async def submit_feedback(request: Request):
+    try:
+        data = await request.json()
+        user_id = data.get("user_id")
+        message = data.get("message")
+
+        # Validate message
+        if not message or len(message.strip()) == 0:
+            raise HTTPException(status_code=400, detail="Feedback message cannot be empty")
+
+        if len(message) > 150:
+            raise HTTPException(status_code=400, detail="Feedback message cannot exceed 150 characters")
+
+        with Database() as db:
+            result = db.insert_feedback(user_id, message.strip())
+
+        return JSONResponse(
+            content={
+                "feedback_id": result["feedback_id"],
+                "created_at": result["created_at"],
+                "message": "Feedback submitted successfully"
+            },
+            status_code=200,
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
