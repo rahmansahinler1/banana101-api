@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -7,7 +7,7 @@ import logging
 import requests
 import jwt
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from .db.database import Database
 from .functions.image_functions import ImageFunctions
@@ -19,6 +19,30 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 imgf = ImageFunctions()
 
+def verify_jwt_token(request: Request) -> str:
+    auth_token = request.cookies.get("authToken")
+
+    if not auth_token:
+        logger.warning("No auth token in cookies")
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    try:
+        secret_key = os.getenv("JWT_SECRET_KEY")
+        payload = jwt.decode(auth_token, secret_key, algorithms=["HS256"])
+        user_id = payload.get("user_id")
+
+        if not user_id:
+            logger.warning("No user_id in token payload")
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        return user_id
+    except jwt.ExpiredSignatureError:
+        logger.warning("Token expired")
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError as e:
+        logger.error(f"Invalid token: {e}")
+        raise HTTPException(status_code=401, detail="Invalid token")
+
 @router.get("/health")
 async def health_check():
     logger.log(msg='Working Fine!', level=1)
@@ -28,11 +52,8 @@ async def health_check():
     )
 
 @router.post("/get_user")
-async def get_user(request: Request):
+async def get_user(user_id: str = Depends(verify_jwt_token)):
     try:
-        data = await request.json()
-        user_id = data.get("user_id")
-
         with Database() as db:
             user_info = db.get_user_info(user_id)
 
@@ -46,12 +67,8 @@ async def get_user(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
     
 @router.post("/get_previews")
-async def get_previews(request: Request):
+async def get_previews(user_id: str = Depends(verify_jwt_token)):
     try:
-        # Get payload data
-        data = await request.json()
-        user_id = data.get("user_id")
-
         with Database() as db:
             preview_image_data = db.get_preview_images(user_id)
             preview_generation_data = db.get_preview_generations(user_id)
@@ -67,11 +84,9 @@ async def get_previews(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/get_full_image")
-async def get_full_image(request: Request):
+async def get_full_image(request: Request, user_id: str = Depends(verify_jwt_token)):
     try:
-        # Get payload data
         data = await request.json()
-        user_id = data.get("user_id")
         image_id = data.get("image_id")
 
         with Database() as db:
@@ -91,11 +106,9 @@ async def get_full_image(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/get_full_generated_image")
-async def get_full_generated_image(request: Request):
+async def get_full_generated_image(request: Request, user_id: str = Depends(verify_jwt_token)):
     try:
-        # Get payload data
         data = await request.json()
-        user_id = data.get("user_id")
         image_id = data.get("image_id")
 
         with Database() as db:
@@ -115,14 +128,12 @@ async def get_full_generated_image(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
     
 @router.post("/upload_image")
-async def upload_image(request: Request):
+async def upload_image(request: Request, user_id: str = Depends(verify_jwt_token)):
     try:
-        # Get payload data
         data = await request.json()
-        user_id = data.get("user_id")
         category = data.get("category")
         image_bytes = data.get("imageBytes")
-        # Get preview bytes
+
         decoded_bytes = base64.b64decode(image_bytes)
         preview_bytes = imgf.create_preview(image_bytes=decoded_bytes)
 
@@ -144,7 +155,6 @@ async def upload_image(request: Request):
             status_code=200,
         )
     except Exception as e:
-        # Check if it's a credit error
         if "Insufficient upload credits" in str(e):
             raise HTTPException(
                 status_code=403,
@@ -153,10 +163,9 @@ async def upload_image(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/delete_image")
-async def delete_image(request: Request):
+async def delete_image(request: Request, user_id: str = Depends(verify_jwt_token)):
     try:
         data = await request.json()
-        user_id = data.get("user_id")
         image_id = data.get("image_id")
 
         with Database() as db:
@@ -165,18 +174,26 @@ async def delete_image(request: Request):
                 image_id
                 )
 
-        return JSONResponse(
-            content={"success": result},
-            status_code=200,
-        )
+        if result:
+            return JSONResponse(
+                content={
+                    "success": True,
+                    "uploads_left": result["uploads_left"]
+                },
+                status_code=200,
+            )
+        else:
+            return JSONResponse(
+                content={"success": False},
+                status_code=404,
+            )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/delete_generated_image")
-async def delete_generated_image(request: Request):
+async def delete_generated_image(request: Request, user_id: str = Depends(verify_jwt_token)):
     try:
         data = await request.json()
-        user_id = data.get("user_id")
         image_id = data.get("image_id")
 
         with Database() as db:
@@ -193,15 +210,12 @@ async def delete_generated_image(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
     
 @router.post("/generate_image")
-async def generate_image(request: Request):
+async def generate_image(request: Request, user_id: str = Depends(verify_jwt_token)):
     try:
-        # Get payload data
         data = await request.json()
-        user_id = data.get("user_id")
         yourself_image_id = data.get("yourself_image_id")
         clothing_image_id = data.get("clothing_image_id")
 
-        # Get image data
         with Database() as db:
             yourself_image_bytes = db.get_image(
                 user_id,
@@ -212,14 +226,12 @@ async def generate_image(request: Request):
                 clothing_image_id
                 )
 
-        # Generate image
         generated_image_bytes = imgf.generate_image(
             yourself_image_bytes,
             clothing_image_bytes
             )
         image_base64 = base64.b64encode(generated_image_bytes).decode('utf-8')
 
-        # Save generation to the db
         generated_preview_bytes = imgf.create_preview(generated_image_bytes)
         with Database() as db:
             result = db.insert_generated_image(
@@ -236,7 +248,8 @@ async def generate_image(request: Request):
                 "image_base64": image_base64,
                 "preview_base64": result["preview_base64"],
                 "created_at": result["created_at"],
-                "generations_left": result["generations_left"]
+                "generations_left": result["generations_left"],
+                "recenst_left": result["recenst_left"]
             },
             status_code=200,
         )
@@ -249,10 +262,9 @@ async def generate_image(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/update_fav")
-async def update_fav(request: Request):
+async def update_fav(request: Request, user_id: str = Depends(verify_jwt_token)):
     try:
         data = await request.json()
-        user_id = data.get("user_id")
         image_id = data.get("image_id")
 
         with Database() as db:
@@ -269,10 +281,9 @@ async def update_fav(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/update_image_fav")
-async def update_image_fav(request: Request):
+async def update_image_fav(request: Request, user_id: str = Depends(verify_jwt_token)):
     try:
         data = await request.json()
-        user_id = data.get("user_id")
         image_id = data.get("image_id")
 
         with Database() as db:
@@ -289,13 +300,11 @@ async def update_image_fav(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/submit_feedback")
-async def submit_feedback(request: Request):
+async def submit_feedback(request: Request, user_id: str = Depends(verify_jwt_token)):
     try:
         data = await request.json()
-        user_id = data.get("user_id")
         message = data.get("message")
 
-        # Validate message
         if not message or len(message.strip()) == 0:
             raise HTTPException(status_code=400, detail="Feedback message cannot be empty")
 
@@ -406,8 +415,8 @@ def generate_jwt_token(user_id: str):
     expires_in_days = int(os.getenv("JWT_EXPIRATION_DAYS", 30))
     payload = {
         "user_id": user_id,
-        "exp": datetime.now() + timedelta(days=expires_in_days),
-        "iat": datetime.now()
+        "exp": datetime.now(timezone.utc) + timedelta(days=expires_in_days),
+        "iat": datetime.now(timezone.utc)
     }
 
     token = jwt.encode(payload, secret_key, algorithm="HS256")
