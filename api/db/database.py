@@ -536,3 +536,56 @@ class Database:
             logger.error(f'Exception error while inserting feedback: {e}')
             self.conn.rollback()
             raise e
+
+    def get_user_by_email(self, email):
+        query = """
+        SELECT user_id
+        FROM users
+        WHERE user_email = %s
+        """
+        try:
+            self.cursor.execute(query, (email,))
+            result = self.cursor.fetchone()
+
+            if result:
+                return {
+                    "user_id": str(result[0])
+                }
+            return None
+
+        except DatabaseError as e:
+            logger.error(f"Database error fetching user by email: {e}")
+            self.conn.rollback()
+            raise e
+        except Exception as e:
+            logger.error(f'Exception error fetching user by email: {e}')
+            self.conn.rollback()
+            raise e
+
+    def create_google_user(self, email, name, surname, picture_url, google_id):
+        insert_query = """
+        INSERT INTO users (user_name, user_surname, user_email, google_id, picture_url)
+        VALUES (%s, %s, %s, %s, %s)
+        RETURNING user_id
+        """
+
+        try:
+            self.cursor.execute(insert_query, (
+                name or "",
+                surname or "",
+                email,
+                google_id,
+                picture_url or ""
+            ))
+            result = self.cursor.fetchone()
+            user_id = str(result[0])
+            return user_id
+
+        except DatabaseError as e:
+            logger.error(f"Database error creating Google user: {e}")
+            self.conn.rollback()
+            raise e
+        except Exception as e:
+            logger.error(f'Exception error creating Google user: {e}')
+            self.conn.rollback()
+            raise e

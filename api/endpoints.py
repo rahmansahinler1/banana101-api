@@ -1,10 +1,16 @@
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+import base64
+import logging
+import requests
+import jwt
+import os
+from datetime import datetime, timedelta
 
 from .db.database import Database
 from .functions.image_functions import ImageFunctions
-import logging
-import base64
 
 # logger
 logging.basicConfig(level=logging.INFO)
@@ -311,3 +317,99 @@ async def submit_feedback(request: Request):
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/auth/google")
+async def google_auth(request: Request):
+    try:
+        data = await request.json()
+        code = data.get("code")
+
+        if not code:
+            raise HTTPException(status_code=400, detail="Authorization code is required")
+
+        client_id = os.getenv("GOOGLE_CLIENT_ID")
+        client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+        redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "postmessage")
+
+        google_token_response = await exchange_code_with_google(code, client_id, client_secret, redirect_uri)
+
+        user_info = decode_google_id_token(google_token_response["id_token"], client_id)
+
+        with Database() as db:
+            user = db.get_user_by_email(user_info["email"])
+
+            if not user:
+                user_id = db.create_google_user(
+                    email=user_info.get("email"),
+                    name=user_info.get("given_name"),
+                    surname=user_info.get("family_name"),
+                    picture_url=user_info.get("picture"),
+                    google_id=user_info.get("google_id")
+                )
+            else:
+                user_id = user["user_id"]
+
+        auth_token = generate_jwt_token(user_id)
+
+        return JSONResponse(
+            content={
+                "token": auth_token,
+                "user": user_info
+            },
+            status_code=200
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Google auth error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def exchange_code_with_google(code: str, client_id: str, client_secret: str, redirect_uri: str):
+    token_url = "https://oauth2.googleapis.com/token"
+
+    payload = {
+        "code": code,
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "redirect_uri": redirect_uri,
+        "grant_type": "authorization_code"
+    }
+
+    response = requests.post(token_url, data=payload)
+
+    if response.status_code != 200:
+        raise Exception(f"Failed to exchange code: {response.json()}")
+
+    return response.json()
+
+def decode_google_id_token(token: str, client_id: str):
+    try:
+        id_info = id_token.verify_oauth2_token(
+            token,
+            google_requests.Request(),
+            client_id
+        )
+
+        return {
+            "email": id_info.get("email"),
+            "name": id_info.get("name", ""),
+            "given_name": id_info.get("given_name", ""),
+            "family_name": id_info.get("family_name", ""),
+            "picture": id_info.get("picture", ""),
+            "google_id": id_info.get("sub")
+        }
+    except ValueError as e:
+        raise Exception(f"Invalid token: {str(e)}")
+
+def generate_jwt_token(user_id: str):
+    secret_key = os.getenv("JWT_SECRET_KEY")
+    expires_in_days = int(os.getenv("JWT_EXPIRATION_DAYS", 30))
+
+    payload = {
+        "user_id": user_id,
+        "exp": datetime.now(datetime.UTC) + timedelta(days=expires_in_days),
+        "iat": datetime.now(datetime.UTC)
+    }
+
+    token = jwt.encode(payload, secret_key, algorithm="HS256")
+    return token

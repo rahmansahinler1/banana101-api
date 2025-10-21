@@ -1,10 +1,11 @@
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
-    user_id UUID PRIMARY KEY,
+    user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_name VARCHAR(50) NOT NULL,
     user_surname VARCHAR(50) NOT NULL,
     user_email VARCHAR(100) UNIQUE NOT NULL,
-    user_type VARCHAR(20) NOT NULL,
+    google_id VARCHAR(255) UNIQUE,
+    user_type VARCHAR(20) DEFAULT 'trial',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
