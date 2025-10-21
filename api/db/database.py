@@ -407,15 +407,17 @@ class Database:
         increment_query = """
         UPDATE users SET recents_left = recents_left + 1
         WHERE user_id = %s
+        RETURNING recents_left
         """
 
         try:
             self.cursor.execute(delete_query, (image_id, user_id))
             if self.cursor.rowcount == 0:
-                return False
+                return None
 
             self.cursor.execute(increment_query, (user_id,))
-            return True
+            result = self.cursor.fetchone()
+            return {"recents_left": result[0]}
         except DatabaseError as e:
             logger.error(f"Database error deleting image: {e}")
             self.conn.rollback()

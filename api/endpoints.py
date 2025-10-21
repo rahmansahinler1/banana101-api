@@ -202,10 +202,19 @@ async def delete_generated_image(request: Request, user_id: str = Depends(verify
                 image_id
                 )
 
-        return JSONResponse(
-            content={"success": result},
-            status_code=200,
-        )
+        if result:
+            return JSONResponse(
+                content={
+                    "success": True,
+                    "recents_left": result["recents_left"]
+                },
+                status_code=200,
+            )
+        else:
+            return JSONResponse(
+                content={"success": False},
+                status_code=404,
+            )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
@@ -249,7 +258,7 @@ async def generate_image(request: Request, user_id: str = Depends(verify_jwt_tok
                 "preview_base64": result["preview_base64"],
                 "created_at": result["created_at"],
                 "generations_left": result["generations_left"],
-                "recenst_left": result["recenst_left"]
+                "recents_left": result["recents_left"]
             },
             status_code=200,
         )
