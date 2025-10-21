@@ -404,11 +404,10 @@ def decode_google_id_token(token: str, client_id: str):
 def generate_jwt_token(user_id: str):
     secret_key = os.getenv("JWT_SECRET_KEY")
     expires_in_days = int(os.getenv("JWT_EXPIRATION_DAYS", 30))
-
     payload = {
         "user_id": user_id,
-        "exp": datetime.now(datetime.UTC) + timedelta(days=expires_in_days),
-        "iat": datetime.now(datetime.UTC)
+        "exp": datetime.now() + timedelta(days=expires_in_days),
+        "iat": datetime.now()
     }
 
     token = jwt.encode(payload, secret_key, algorithm="HS256")

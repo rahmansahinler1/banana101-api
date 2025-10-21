@@ -48,7 +48,7 @@ class Database:
             user_id
         ):
         query = """
-            SELECT user_name, user_surname, user_email, gender, picture_url, user_type, uploads_left, generations_left, last_payment_at
+            SELECT user_name, user_surname, user_email, picture_url, user_type, uploads_left, generations_left, recents_left, last_payment_at
             FROM users
             WHERE user_id = %s
         """
@@ -61,7 +61,7 @@ class Database:
                 next_renewal = None
 
                 # Calculate next renewal date if premium and has last_payment_at
-                if last_payment and result[5] == 'premium':
+                if last_payment and result[4] == 'premium':
                     # Add exactly 1 month (handles month-end edge cases properly)
                     year = last_payment.year
                     month = last_payment.month
@@ -85,11 +85,11 @@ class Database:
                     "name": result[0],
                     "surname": result[1],
                     "email": result[2],
-                    "gender": result[3],
-                    "picture_url": result[4],
-                    "type": result[5],
-                    "uploads_left": result[6],
-                    "generations_left": result[7],
+                    "picture_url": result[3],
+                    "type": result[4],
+                    "uploads_left": result[5],
+                    "generations_left": result[6],
+                    "recents_left": result[7],
                     "next_renewal_date": next_renewal
                 }
             return None
@@ -175,7 +175,7 @@ class Database:
         ):
         # Check if user has generation credits
         credit_check_query = """
-        SELECT generations_left FROM users WHERE user_id = %s
+        SELECT generations_left, recents_left FROM users WHERE user_id = %s
         """
 
         insert_query = """
@@ -185,20 +185,21 @@ class Database:
         """
 
         decrement_query = """
-        UPDATE users SET generations_left = generations_left - 1
+        UPDATE users SET generations_left = generations_left - 1, recents_left = recents_left - 1
         WHERE user_id = %s
-        RETURNING generations_left
+        RETURNING generations_left, recents_left
         """
 
         try:
-            # Step 1: Check credits
             self.cursor.execute(credit_check_query, (user_id,))
             credit_result = self.cursor.fetchone()
 
             if not credit_result or credit_result[0] <= 0:
                 raise Exception("Insufficient generation credits")
 
-            # Step 2: Insert generation
+            if credit_result[1] <= 0:
+                raise Exception("Insufficient recents storage")
+
             self.cursor.execute(insert_query, (
                 user_id,
                 yourself_image_id,
@@ -210,15 +211,15 @@ class Database:
             image_id = result[0]
             created_at = result[1]
 
-            # Step 3: Decrement credit
             self.cursor.execute(decrement_query, (user_id,))
-            new_credits = self.cursor.fetchone()[0]
+            new_credits = self.cursor.fetchone()
 
             return {
                 "image_id": str(image_id),
                 "preview_base64": base64.b64encode(generated_preview_bytes).decode('utf8'),
                 "created_at": created_at.isoformat(),
-                "generations_left": new_credits
+                "generations_left": new_credits[0],
+                "recents_left": new_credits[1]
             }
         except DatabaseError as e:
             logger.error(f'Database error while uploading files: {e}')
@@ -365,15 +366,22 @@ class Database:
             user_id,
             image_id
         ):
-        query = """
+        delete_query = """
         DELETE FROM images
         WHERE image_id = %s AND user_id = %s
         """
+
+        increment_query = """
+        UPDATE users SET uploads_left = uploads_left + 1
+        WHERE user_id = %s
+        """
+
         try:
-            self.cursor.execute(query, (image_id, user_id))
-            # Check if any row was deleted
+            self.cursor.execute(delete_query, (image_id, user_id))
             if self.cursor.rowcount == 0:
                 return False
+
+            self.cursor.execute(increment_query, (user_id,))
             return True
         except DatabaseError as e:
             logger.error(f"Database error deleting image: {e}")
@@ -389,15 +397,22 @@ class Database:
             user_id,
             image_id
         ):
-        query = """
+        delete_query = """
         DELETE FROM generations
         WHERE image_id = %s AND user_id = %s
         """
+
+        increment_query = """
+        UPDATE users SET recents_left = recents_left + 1
+        WHERE user_id = %s
+        """
+
         try:
-            self.cursor.execute(query, (image_id, user_id))
-            # Check if any row was deleted
+            self.cursor.execute(delete_query, (image_id, user_id))
             if self.cursor.rowcount == 0:
                 return False
+
+            self.cursor.execute(increment_query, (user_id,))
             return True
         except DatabaseError as e:
             logger.error(f"Database error deleting image: {e}")
