@@ -1,2 +1,2 @@
-# banana101-api
-API service for the sample banana application
+# unmarble-api
+API service for the unmarble application

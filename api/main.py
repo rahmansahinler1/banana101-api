@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .endpoints import router
 
-app = FastAPI(title="Banana API", version="1.0.0")
+app = FastAPI(title="Unmarble API", version="1.0.0")
 
 # Enable CORS for frontend communication
 app.add_middleware(
@@ -23,7 +23,7 @@ app.include_router(router, prefix="/api/v1")
 # Initial loading
 @app.get("/")
 async def root():
-    return {"message": "banana API"}
+    return {"message": "unmarble API"}
 
 if __name__ == "__main__":
     import uvicorn

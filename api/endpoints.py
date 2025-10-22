@@ -47,7 +47,7 @@ def verify_jwt_token(request: Request) -> str:
 async def health_check():
     logger.log(msg='Working Fine!', level=1)
     return JSONResponse(
-        content={"status": "healthy", "service": "Banana API"},
+        content={"status": "healthy", "service": "Unmarble API"},
         status_code=200
     )
 
