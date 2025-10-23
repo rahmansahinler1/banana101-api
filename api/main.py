@@ -11,6 +11,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173", 
         "http://localhost:5174",
+        "https://www.unmarble.com",
+        "https://unmarble.com"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -18,7 +20,7 @@ app.add_middleware(
 )
 
 # API routes
-app.include_router(router, prefix="/api/v1")
+app.include_router(router, prefix="/v1")
 
 # Initial loading
 @app.get("/")
