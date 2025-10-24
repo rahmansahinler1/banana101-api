@@ -135,6 +135,14 @@ async def upload_image(request: Request, user_id: str = Depends(verify_jwt_token
         image_bytes = data.get("imageBytes")
 
         decoded_bytes = base64.b64decode(image_bytes)
+
+        max_size_bytes = 6 * 1024 * 1024
+        if len(decoded_bytes) > max_size_bytes:
+            raise HTTPException(
+                status_code=400,
+                detail="Image file size exceeds 5MB limit"
+            )
+
         preview_bytes = imgf.create_preview(image_bytes=decoded_bytes)
 
         with Database() as db:
