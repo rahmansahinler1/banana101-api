@@ -18,7 +18,7 @@ class ImageFunctions:
         image = Image.open(io.BytesIO(image_bytes))
         image.thumbnail(self.max_preview_size, Image.LANCZOS)
         output = io.BytesIO()
-        image.save(output, format='WEBP', quality=95, method=6)
+        image.save(output, format='WEBP', quality=100, method=6)
         return output.getvalue()
 
     def generate_image(self, yourself_image_base64, clothing_image_base64):
