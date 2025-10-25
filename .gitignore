@@ -5,3 +5,4 @@ database.ini
 *.pyc
 __pycache__/
 logs/
+errors.log
