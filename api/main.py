@@ -1,11 +1,23 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+import logging
+import os
 from .endpoints import router
 
+
+# Logging
+error_handler = logging.FileHandler(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'errors.log'))
+error_handler.setLevel(logging.ERROR)
+error_handler.setFormatter(logging.Formatter('%(asctime)s | %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
+
+logging.basicConfig(
+    level=logging.ERROR,
+    handlers=[error_handler]
+)
+
+# API
 app = FastAPI(title="Unmarble API", version="1.0.0")
 
-# Enable CORS for frontend communication
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -19,10 +31,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# API routes
 app.include_router(router, prefix="/v1")
 
-# Initial loading
 @app.get("/")
 async def root():
     return {"message": "unmarble API"}

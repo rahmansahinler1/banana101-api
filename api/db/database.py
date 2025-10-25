@@ -1,12 +1,9 @@
 import psycopg2
-import logging
 import base64
 import calendar
 from psycopg2 import DatabaseError
 from configparser import ConfigParser
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 class Database:
     _instance = None
@@ -95,11 +92,9 @@ class Database:
             return None
 
         except DatabaseError as e:
-            logger.error(f"Database error fetching user info: {e}")
             self.conn.rollback()
             raise e
         except Exception as e:
-            logger.error(f'Exception error fetching user info: {e}')
             self.conn.rollback()
             raise e
     
@@ -128,14 +123,12 @@ class Database:
         """
 
         try:
-            # Step 1: Check credits
             self.cursor.execute(credit_check_query, (user_id,))
             credit_result = self.cursor.fetchone()
 
             if not credit_result or credit_result[0] <= 0:
                 raise Exception("Insufficient upload credits")
 
-            # Step 2: Insert image
             self.cursor.execute(insert_query, (
                 user_id,
                 category,
@@ -146,7 +139,6 @@ class Database:
             image_id = result[0]
             created_at = result[1]
 
-            # Step 3: Decrement credit
             self.cursor.execute(decrement_query, (user_id,))
             new_credits = self.cursor.fetchone()[0]
 
@@ -157,11 +149,9 @@ class Database:
                 "uploads_left": new_credits
             }
         except DatabaseError as e:
-            logger.error(f'Database error while uploading files: {e}')
             self.conn.rollback()
             raise e
         except Exception as e:
-            logger.error(f'Exception error while uploading files: {e}')
             self.conn.rollback()
             raise e
     
@@ -173,7 +163,6 @@ class Database:
             generated_image_bytes,
             generated_preview_bytes
         ):
-        # Check if user has generation credits
         credit_check_query = """
         SELECT generations_left, recents_left FROM users WHERE user_id = %s
         """
@@ -222,11 +211,9 @@ class Database:
                 "recents_left": new_credits[1]
             }
         except DatabaseError as e:
-            logger.error(f'Database error while uploading files: {e}')
             self.conn.rollback()
             raise e
         except Exception as e:
-            logger.error(f'Exception error while uploading files: {e}')
             self.conn.rollback()
             raise e
     
@@ -247,7 +234,6 @@ class Database:
             if not data:
                 return {}
 
-            # Get image id and preview from fetched data
             result = {"yourself": [], "clothing": []}
             for row in data:
                 category = row[1]
@@ -260,11 +246,9 @@ class Database:
             return result
 
         except DatabaseError as e:
-            logger.error(f'Database error while getting preview files: {e}')
             self.conn.rollback()
             raise e
         except Exception as e:
-            logger.error(f'Exception error while getting preview files: {e}')
             self.conn.rollback()
             raise e
     
@@ -285,7 +269,6 @@ class Database:
             if not data:
                 return []
             
-            # Get image id and preview from fetched data
             result = []
             for row in data:
                 result.append({
@@ -297,11 +280,9 @@ class Database:
             return result
             
         except DatabaseError as e:
-            logger.error(f'Database error while getting preview files: {e}')
             self.conn.rollback()
             raise e
         except Exception as e:
-            logger.error(f'Exception error while getting preview files: {e}')
             self.conn.rollback()
             raise e
         
@@ -325,11 +306,9 @@ class Database:
             return data[0]
 
         except DatabaseError as e:
-            logger.error(f'Database error while getting full image bytes: {e}')
             self.conn.rollback()
             raise e
         except Exception as e:
-            logger.error(f'Exception error while gettin full image byes: {e}')
             self.conn.rollback()
             raise e
 
@@ -353,11 +332,9 @@ class Database:
             return data[0]
 
         except DatabaseError as e:
-            logger.error(f'Database error while getting full generated image bytes: {e}')
             self.conn.rollback()
             raise e
         except Exception as e:
-            logger.error(f'Exception error while getting full generated image bytes: {e}')
             self.conn.rollback()
             raise e
 
@@ -384,13 +361,13 @@ class Database:
 
             self.cursor.execute(increment_query, (user_id,))
             result = self.cursor.fetchone()
+
             return {"uploads_left": result[0]}
+        
         except DatabaseError as e:
-            logger.error(f"Database error deleting image: {e}")
             self.conn.rollback()
             raise e
         except Exception as e:
-            logger.error(f'Exception error deleting image: {e}')
             self.conn.rollback()
             raise e
     
@@ -419,11 +396,9 @@ class Database:
             result = self.cursor.fetchone()
             return {"recents_left": result[0]}
         except DatabaseError as e:
-            logger.error(f"Database error deleting image: {e}")
             self.conn.rollback()
             raise e
         except Exception as e:
-            logger.error(f'Exception error deleting image: {e}')
             self.conn.rollback()
             raise e
     
@@ -442,17 +417,14 @@ class Database:
             self.cursor.execute(query, (image_id, user_id))
             result = self.cursor.fetchone()
 
-            # Check if any row was updated
             if not result:
                 return False
 
             return True
         except DatabaseError as e:
-            logger.error(f"Database error updating fav: {e}")
             self.conn.rollback()
             raise e
         except Exception as e:
-            logger.error(f'Exception error updating fav: {e}')
             self.conn.rollback()
             raise e
 
@@ -471,17 +443,14 @@ class Database:
             self.cursor.execute(query, (image_id, user_id))
             result = self.cursor.fetchone()
 
-            # Check if any row was updated
             if not result:
                 return False
 
             return True
         except DatabaseError as e:
-            logger.error(f"Database error updating image fav: {e}")
             self.conn.rollback()
             raise e
         except Exception as e:
-            logger.error(f'Exception error updating image fav: {e}')
             self.conn.rollback()
             raise e
     
@@ -496,7 +465,6 @@ class Database:
         WHERE user_id = %s AND image_id = %s
         """
         try:
-            # Get yourself image
             self.cursor.execute(query, (user_id, image_id))
             data = self.cursor.fetchone()
             if not data:
@@ -506,11 +474,9 @@ class Database:
             return image_bytes
 
         except DatabaseError as e:
-            logger.error(f'Database error while getting preview files: {e}')
             self.conn.rollback()
             raise e
         except Exception as e:
-            logger.error(f'Exception error while getting preview files: {e}')
             self.conn.rollback()
             raise e
 
@@ -519,7 +485,7 @@ class Database:
             user_id,
             message
         ):
-        # Check if user has already submitted 5 or more feedbacks
+
         count_query = """
         SELECT COUNT(*) FROM feedbacks WHERE user_id = %s
         """
@@ -531,28 +497,26 @@ class Database:
         """
 
         try:
-            # Check feedback count
             self.cursor.execute(count_query, (user_id,))
             count_result = self.cursor.fetchone()
 
             if count_result and count_result[0] >= 5:
                 raise Exception("Feedback limit reached!")
 
-            # Insert feedback
             self.cursor.execute(insert_query, (user_id, message))
             result = self.cursor.fetchone()
             feedback_id = result[0]
             created_at = result[1]
+
             return {
                 "feedback_id": str(feedback_id),
                 "created_at": created_at.isoformat()
             }
+        
         except DatabaseError as e:
-            logger.error(f'Database error while inserting feedback: {e}')
             self.conn.rollback()
             raise e
         except Exception as e:
-            logger.error(f'Exception error while inserting feedback: {e}')
             self.conn.rollback()
             raise e
 
@@ -573,11 +537,9 @@ class Database:
             return None
 
         except DatabaseError as e:
-            logger.error(f"Database error fetching user by email: {e}")
             self.conn.rollback()
             raise e
         except Exception as e:
-            logger.error(f'Exception error fetching user by email: {e}')
             self.conn.rollback()
             raise e
 
@@ -601,10 +563,8 @@ class Database:
             return user_id
 
         except DatabaseError as e:
-            logger.error(f"Database error creating Google user: {e}")
             self.conn.rollback()
             raise e
         except Exception as e:
-            logger.error(f'Exception error creating Google user: {e}')
             self.conn.rollback()
             raise e

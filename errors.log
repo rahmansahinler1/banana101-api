@@ -1,0 +1,26 @@
+2025-10-25 17:35:34 | get_user | 31 | InvalidTextRepresentation: invalid input syntax for type uuid: "31"
+LINE 4:             WHERE user_id = '31'
+                                    ^
+Traceback (most recent call last):
+  File "/Users/rahmansahinler/Documents/repos/unmarble-api/api/endpoints.py", line 57, in get_user
+    user_info = db.get_user_info(user_id)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/rahmansahinler/Documents/repos/unmarble-api/api/db/database.py", line 98, in get_user_info
+    raise e
+  File "/Users/rahmansahinler/Documents/repos/unmarble-api/api/db/database.py", line 55, in get_user_info
+    self.cursor.execute(query, (user_id,))
+psycopg2.errors.InvalidTextRepresentation: invalid input syntax for type uuid: "31"
+LINE 4:             WHERE user_id = '31'
+                                    ^
+
+2025-10-25 17:37:52 | get_user | dcf24c3b-19ad-40bb-bb1d-6324cafa8722 | IndexError: string index out of range
+Traceback (most recent call last):
+  File "/Users/rahmansahinler/Documents/repos/unmarble-api/api/endpoints.py", line 57, in get_user
+    user_info = db.get_user_info(user_id)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/rahmansahinler/Documents/repos/unmarble-api/api/db/database.py", line 101, in get_user_info
+    raise e
+  File "/Users/rahmansahinler/Documents/repos/unmarble-api/api/db/database.py", line 86, in get_user_info
+    "email": result[2],
+             ~~~~~~^^^
+IndexError: string index out of range

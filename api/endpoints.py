@@ -8,16 +8,13 @@ import requests
 import jwt
 import os
 from datetime import datetime, timedelta, timezone
-
 from .db.database import Database
 from .functions.image_functions import ImageFunctions
 
-# logger
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 router = APIRouter()
 imgf = ImageFunctions()
+
 
 def verify_jwt_token(request: Request) -> str:
     auth_token = request.cookies.get("authToken")
@@ -64,6 +61,7 @@ async def get_user(user_id: str = Depends(verify_jwt_token)):
             status_code=200,
         )
     except Exception as e:
+        logger.error(f"get_user | {user_id} | {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
     
 @router.post("/get_previews")
@@ -81,6 +79,7 @@ async def get_previews(user_id: str = Depends(verify_jwt_token)):
             status_code=200,
         )
     except Exception as e:
+        logger.error(f"get_previews | {user_id} | {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/get_full_image")
@@ -103,6 +102,7 @@ async def get_full_image(request: Request, user_id: str = Depends(verify_jwt_tok
             status_code=200,
         )
     except Exception as e:
+        logger.error(f"get_full_image | {user_id} | {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/get_full_generated_image")
@@ -125,6 +125,7 @@ async def get_full_generated_image(request: Request, user_id: str = Depends(veri
             status_code=200,
         )
     except Exception as e:
+        logger.error(f"get_full_generated_image | {user_id} | {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
     
 @router.post("/upload_image")
@@ -163,6 +164,7 @@ async def upload_image(request: Request, user_id: str = Depends(verify_jwt_token
             status_code=200,
         )
     except Exception as e:
+        logger.error(f"upload_image | {user_id} | {type(e).__name__}: {str(e)}", exc_info=True)
         if "Insufficient upload credits" in str(e):
             raise HTTPException(
                 status_code=403,
@@ -196,6 +198,7 @@ async def delete_image(request: Request, user_id: str = Depends(verify_jwt_token
                 status_code=404,
             )
     except Exception as e:
+        logger.error(f"delete_image | {user_id} | {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/delete_generated_image")
@@ -224,6 +227,7 @@ async def delete_generated_image(request: Request, user_id: str = Depends(verify
                 status_code=404,
             )
     except Exception as e:
+        logger.error(f"delete_generated_image | {user_id} | {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
     
 @router.post("/generate_image")
@@ -271,6 +275,7 @@ async def generate_image(request: Request, user_id: str = Depends(verify_jwt_tok
             status_code=200,
         )
     except Exception as e:
+        logger.error(f"generate_image | {user_id} | {type(e).__name__}: {str(e)}", exc_info=True)
         if "Insufficient generation credits" in str(e):
             raise HTTPException(
                 status_code=403,
@@ -295,6 +300,7 @@ async def update_fav(request: Request, user_id: str = Depends(verify_jwt_token))
             status_code=200,
         )
     except Exception as e:
+        logger.error(f"update_fav | {user_id} | {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/update_image_fav")
@@ -314,6 +320,7 @@ async def update_image_fav(request: Request, user_id: str = Depends(verify_jwt_t
             status_code=200,
         )
     except Exception as e:
+        logger.error(f"update_image_fav | {user_id} | {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/submit_feedback")
@@ -339,9 +346,9 @@ async def submit_feedback(request: Request, user_id: str = Depends(verify_jwt_to
             },
             status_code=200,
         )
-    except HTTPException as e:
-        raise e
+    
     except Exception as e:
+        logger.error(f"update_image_fav | {user_id} | {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/auth/google")
@@ -351,6 +358,7 @@ async def google_auth(request: Request):
         code = data.get("code")
 
         if not code:
+            logger.error(f"Authentication error, could not got the code.")
             raise HTTPException(status_code=400, detail="Authorization code is required")
 
         client_id = os.getenv("GOOGLE_CLIENT_ID")
@@ -384,10 +392,9 @@ async def google_auth(request: Request):
             },
             status_code=200
         )
-    except HTTPException as e:
-        raise e
+    
     except Exception as e:
-        logger.error(f"Google auth error: {e}")
+        logger.error(f"auth | {user_id} | {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 async def exchange_code_with_google(code: str, client_id: str, client_secret: str, redirect_uri: str):
@@ -404,6 +411,7 @@ async def exchange_code_with_google(code: str, client_id: str, client_secret: st
     response = requests.post(token_url, data=payload)
 
     if response.status_code != 200:
+        logger.error(f"Auth, google code exchange")
         raise Exception(f"Failed to exchange code: {response.json()}")
 
     return response.json()
@@ -425,6 +433,7 @@ def decode_google_id_token(token: str, client_id: str):
             "google_id": id_info.get("sub")
         }
     except ValueError as e:
+        logger.error(f"Auth, decode google id token")
         raise Exception(f"Invalid token: {str(e)}")
 
 def generate_jwt_token(user_id: str):
